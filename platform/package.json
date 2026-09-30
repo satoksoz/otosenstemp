@@ -1,0 +1,23 @@
+{
+  "name": "mikrodmz-platform",
+  "version": "1.0.0",
+  "description": "MikroDMZ backend platform",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.18.0",
+    "redis": "^4.6.15",
+    "ws": "^8.18.0"
+  }
+}

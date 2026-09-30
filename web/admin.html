@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="MikroDMZ cihaz yönetim paneli" />
+    <title>MikroDMZ | Yönetim Paneli</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="index.html" aria-label="MikroDMZ ana sayfa">
+          <span class="brand-mark">M</span>
+          <span><strong>mikro</strong><b>dmz</b></span>
+        </a>
+        <div class="workspace-label">ÇALIŞMA ALANI</div>
+        <nav class="side-nav" aria-label="Panel menüsü">
+          <a class="active" href="#overview"><span>◈</span> Genel görünüm</a>
+          <a href="#devices"><span>⌁</span> Cihazlar</a>
+          <a href="#activity"><span>◷</span> Aktivite</a>
+          <a href="#settings"><span>⚙</span> Ayarlar</a>
+        </nav>
+        <div class="sidebar-foot">
+          <div class="secure-note"><span class="pulse"></span><span><b>Platform aktif</b><small>Güvenli bağlantı</small></span></div>
+          <a class="back-link" href="index.html">← Ana sayfaya dön</a>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="kicker">YÖNETİM PANELİ / <span id="connection-label">BAĞLANIYOR</span></p>
+            <h1>Kontrol merkezi</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" id="refresh-button" title="Verileri yenile" aria-label="Verileri yenile">↻</button>
+            <div class="user-menu"><span class="avatar">A</span><span><b id="user-email">Admin</b><small id="user-role">Kullanıcı</small></span></div>
+            <button class="logout-button" id="logout-button">Çıkış</button>
+          </div>
+        </header>
+
+        <section id="overview" class="content-section">
+          <div class="section-intro"><div><p class="kicker">BUGÜNÜN ÖZETİ</p><h2>Sistem durumu</h2></div><span class="last-update" id="last-update">Güncelleniyor...</span></div>
+          <div class="stats-grid">
+            <article class="stat-card"><span class="stat-label">Toplam kullanıcı</span><strong id="total-users">--</strong><span class="stat-foot positive">Platform hesabı</span></article>
+            <article class="stat-card accent"><span class="stat-label">Kayıtlı cihaz</span><strong id="total-devices">--</strong><span class="stat-foot">ESP32 uç noktası</span></article>
+            <article class="stat-card"><span class="stat-label">Çevrimiçi</span><strong id="online-devices">--</strong><span class="stat-foot positive" id="online-rate">Bağlantı bekleniyor</span></article>
+            <article class="stat-card warning-card"><span class="stat-label">Aktif uyarı</span><strong id="alerts">--</strong><span class="stat-foot warning">İnceleme gerekebilir</span></article>
+          </div>
+        </section>
+
+        <section id="devices" class="content-section device-section">
+          <div class="section-intro"><div><p class="kicker">UÇ NOKTALAR</p><h2>Cihazlar</h2></div><button class="outline-button" id="scan-button">⌁ Cihazları tara</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Cihaz</th><th>Bölge</th><th>Sıcaklık</th><th>Durum</th><th>Son işlem</th><th>İşlemler</th></tr></thead><tbody id="device-list"><tr><td colspan="6" class="loading-cell">Cihaz verileri getiriliyor...</td></tr></tbody></table></div>
+        </section>
+
+        <section id="ota" class="content-section"><div class="section-intro"><div><p class="kicker">FIRMWARE</p><h2>OTA güncelleme</h2></div></div><form id="ota-form"><label for="ota-device-id">OTA cihazı</label><input id="ota-device-id" required placeholder="SAT-A1B2C3D4E5F6" /><label for="ota-file">Firmware .bin</label><input id="ota-file" type="file" accept=".bin,application/octet-stream" required /><button class="outline-button" type="submit">Firmware yükle ↑</button><p class="form-message" id="ota-form-message" role="alert"></p></form></section>
+
+        <section id="activity" class="content-section bottom-grid">
+          <div class="activity-panel"><div class="panel-heading"><div><p class="kicker">CANLI AKIŞ</p><h2>WebSocket bağlantısı</h2></div><span class="live-badge"><span class="pulse"></span> CANLI</span></div><div class="event-log" id="event-log"><div class="event"><span class="event-time">--:--:--</span><span>Bağlantı kuruluyor...</span></div></div></div>
+          <div id="settings" class="quick-panel"><p class="kicker">HIZLI İŞLEMLER</p><h2>Panel ayarları</h2><form id="user-form"><label for="new-user-email">Yeni kullanıcı e-postası</label><input id="new-user-email" type="email" required placeholder="kullanici@example.com" /><label for="new-user-password">Yeni kullanıcı şifresi</label><input id="new-user-password" type="password" minlength="8" required /><button class="quick-action" type="submit">Kullanıcı oluştur <span>+</span></button><p class="form-message" id="user-form-message" role="alert"></p></form><form id="assign-device-form"><label for="assign-device-id">Mevcut cihaz</label><input id="assign-device-id" required placeholder="ESP32-01" /><label for="assign-device-owner">Yeni cihaz sahibi</label><input id="assign-device-owner" type="email" required placeholder="kullanici@example.com" /><button class="quick-action" type="submit">Cihazı ata <span>→</span></button><p class="form-message" id="assign-device-message" role="alert"></p></form><form id="device-form"><label for="device-id">Cihaz kimliği</label><input id="device-id" required pattern="[A-Za-z0-9_-]{2,64}" placeholder="ESP32-04" /><label for="device-owner">Cihaz sahibi</label><input id="device-owner" type="email" placeholder="kullanici@example.com" /><label for="device-zone">Bölge</label><input id="device-zone" value="unassigned" /><label for="device-firmware">Firmware</label><input id="device-firmware" value="unknown" /><label for="device-ip">LAN IP (isteğe bağlı)</label><input id="device-ip" inputmode="decimal" placeholder="192.168.137.197" /><button class="quick-action" type="submit">Cihaz ekle <span>+</span></button><p class="form-message" id="device-form-message" role="alert"></p></form><h3>Kullanıcılar ve yetkili cihazlar</h3><div id="user-list">Kullanıcılar getiriliyor...</div><button class="quick-action" id="export-button">Veri özetini indir <span>↓</span></button><button class="quick-action" id="clear-button">Olay akışını temizle <span>×</span></button></div>
+        </section>
+        <section id="password-management" class="content-section" hidden>
+          <div class="section-intro"><div><p class="kicker">HESAP YÖNETİMİ</p><h2>Kullanıcı parolası</h2></div></div>
+          <form id="password-reset-form">
+            <label for="password-account">Hesap</label>
+            <select id="password-account" required><option value="">Kullanıcı seçin</option></select>
+            <label for="password-new">Yeni parola</label>
+            <input id="password-new" type="password" minlength="8" autocomplete="new-password" required />
+            <label for="password-confirm">Yeni parola tekrar</label>
+            <input id="password-confirm" type="password" minlength="8" autocomplete="new-password" required />
+            <button id="password-visibility" class="outline-button" type="button">Parolaları göster</button>
+            <button class="outline-button" type="submit">Parolayı değiştir</button>
+            <p class="form-message" id="password-reset-message" role="status"></p>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <div class="login-layer" id="login-layer">
+      <form class="login-card" id="login-form">
+        <div class="login-brand"><span class="brand-mark">M</span> mikro<b>dmz</b></div>
+        <p class="kicker">GÜVENLİ YÖNETİM</p>
+        <h1>Kontrol merkezine giriş yapın.</h1>
+        <p class="login-copy">Cihazlarınızı, bağlantılarınızı ve sistem akışını tek bir yerden yönetin.</p>
+        <label for="email">E-posta</label><input id="email" type="email" value="admin@mikrodmz.com" autocomplete="username" required />
+        <label for="password">Şifre</label><input id="password" type="password" value="admin123" autocomplete="current-password" required />
+        <button class="login-button" type="submit">Panele giriş yap <span>→</span></button>
+        <p class="form-message" id="form-message" role="alert"></p>
+        <a class="back-link" href="index.html">← Ana sayfaya dön</a>
+      </form>
+    </div>
+    <script src="admin.js"></script>
+  </body>
+</html>

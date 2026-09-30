@@ -1,0 +1,10 @@
+.git
+.env
+**/.env
+**/node_modules
+**/*.log
+**/*.sqlite
+**/*.sqlite-*
+**/*.db
+**/*.bak*
+arduino/**/build

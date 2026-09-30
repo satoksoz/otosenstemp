@@ -1,0 +1,21 @@
+# Node / platform
+platform/node_modules/
+platform/.env
+platform/data/*.sqlite*
+platform/data/*.bak*
+platform/data/*.db
+platform/src/data/*.sqlite*
+platform/src/data/*.bak*
+platform/src/data/*.db
+npm-debug.log*
+
+# Arduino build output
+arduino/**/build/
+
+# IDE / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Common generated files
+*.log
