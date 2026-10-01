@@ -223,7 +223,7 @@ function relayFirmwareUpload(req, res, deviceId, localIp) {
   req.pipe(request);
 }
 
-async function relayHttpRequest(req, res, deviceId) {
+async function relayHttpRequest(req, res, deviceId, relayOptions = {}) {
   const device = await store.getDevice(deviceId);
   const tunnel = tunnelDevices.get(deviceId);
   if (!tunnel) {
@@ -237,13 +237,15 @@ async function relayHttpRequest(req, res, deviceId) {
   stream.timeout = setTimeout(() => {
     if (!stream.completed && !res.headersSent) res.status(504).json({ error: 'ESP32 yanıt zaman aşımına uğradı' });
     tunnelStreams.delete(connectionId);
-  }, 15000);
+  }, relayOptions.timeoutMs || 15000);
   tunnelStreams.set(connectionId, stream);
   const headers = Object.entries(req.headers)
     .filter(([name]) => name !== 'host' && name !== 'connection')
     .map(([name, value]) => `${name}: ${Array.isArray(value) ? value.join(', ') : value}`)
     .join('\r\n');
-  const rawRequest = `${req.method} ${pathForDeviceRequest(req)} HTTP/1.1\r\nHost: localhost\r\n${headers}\r\nConnection: close\r\n\r\n`;
+  const method = relayOptions.method || req.method;
+  const requestPath = relayOptions.path || pathForDeviceRequest(req);
+  const rawRequest = `${method} ${requestPath} HTTP/1.1\r\nHost: localhost\r\n${headers}\r\nConnection: close\r\n\r\n`;
   sendTunnelEnvelope(tunnel.socket, 'new_conn', connectionId, { local_port: 80 });
   sendTunnelEnvelope(tunnel.socket, 'data', connectionId, Buffer.from(rawRequest).toString('base64'));
   req.on('data', (chunk) => sendTunnelEnvelope(tunnel.socket, 'data', connectionId, Buffer.from(chunk).toString('base64')));
@@ -463,11 +465,17 @@ app.patch('/api/devices/:id/owner', requireAdmin, async (req, res) => {
 app.put('/api/devices/:id/firmware', requireAdmin, async (req, res) => {
   const device = await store.getDevice(req.params.id);
   if (!device) return res.status(404).json({ error: 'Cihaz bulunamadı' });
-  if (!device.localIp || !isLanIpv4(device.localIp)) return res.status(409).json({ error: 'Cihazın geçerli LAN IP adresi yok' });
   if (!String(req.headers['content-type'] || '').toLowerCase().startsWith('application/octet-stream')) {
     return res.status(415).json({ error: 'Firmware application/octet-stream olarak gönderilmeli' });
   }
-  return relayFirmwareUpload(req, res, device.id, device.localIp);
+  const contentLength = Number(req.headers['content-length'] || 0);
+  if (!Number.isFinite(contentLength) || contentLength <= 0 || contentLength > 4 * 1024 * 1024) {
+    return res.status(413).json({ error: 'Firmware boyutu 1 byte ile 4 MB arasında olmalı' });
+  }
+  if (!isProduction && device.localIp && isLanIpv4(device.localIp)) {
+    return relayFirmwareUpload(req, res, device.id, device.localIp);
+  }
+  return relayHttpRequest(req, res, device.id, { method: 'POST', path: '/update', timeoutMs: 120000 });
 });
 
 app.patch('/api/devices/:id', requireAdmin, async (req, res) => {
