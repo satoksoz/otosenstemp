@@ -24,7 +24,7 @@ const DEVICE_API_KEY = process.env.DEVICE_API_KEY || (isProduction ? '' : 'dev-d
 const TUNNEL_TOKEN = process.env.TUNNEL_TOKEN || (isProduction ? '' : 'mikrodmz-local-tunnel-key-2026');
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@mikrodmz.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProduction ? '' : 'admin123');
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (isProduction ? '' : 'admin1234567');
 const DB_CONFIG = {
   connectionString: process.env.DATABASE_URL || '',
   adminEmail: ADMIN_EMAIL,
@@ -225,11 +225,13 @@ function relayFirmwareUpload(req, res, deviceId, localIp) {
 
 async function relayHttpRequest(req, res, deviceId) {
   const device = await store.getDevice(deviceId);
-  if (device?.localIp && isLanIpv4(device.localIp)) {
-    return relayDirectHttpRequest(req, res, deviceId, device.localIp);
-  }
   const tunnel = tunnelDevices.get(deviceId);
-  if (!tunnel) return res.status(502).json({ error: 'Cihaz tüneli bağlı değil' });
+  if (!tunnel) {
+    if (!isProduction && device?.localIp && isLanIpv4(device.localIp)) {
+      return relayDirectHttpRequest(req, res, deviceId, device.localIp);
+    }
+    return res.status(502).json({ error: 'Cihaz tüneli bağlı değil' });
+  }
   const connectionId = randomUUID();
   const stream = { res, socket: tunnel.socket, deviceId, responseBuffer: Buffer.alloc(0) };
   stream.timeout = setTimeout(() => {
