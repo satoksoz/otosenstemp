@@ -1,5 +1,11 @@
 const API_URL = window.location.origin;
-const state = { token: localStorage.getItem('mikrodmz_token'), dashboard: null, socket: null };
+const state = {
+  token: localStorage.getItem('mikrodmz_token'),
+  dashboard: null,
+  socket: null,
+  socketReconnectTimer: null,
+  socketReconnectAttempt: 0
+};
 
 const elements = {
   loginLayer: document.getElementById('login-layer'),
@@ -85,11 +91,37 @@ async function loadDashboard(refreshUsers = true) {
 }
 
 function connectWebSocket() {
-  state.socket = new WebSocket(API_URL.replace('http', 'ws') + '/ws');
-  state.socket.addEventListener('open', () => { elements.connectionLabel.textContent = 'BAĞLI'; addEvent('WebSocket bağlantısı aktif.'); });
-  state.socket.addEventListener('message', (event) => { const data = JSON.parse(event.data); if (data.type === 'connected') addEvent(data.message); });
-  state.socket.addEventListener('close', () => { elements.connectionLabel.textContent = 'BAĞLANTI KOPTU'; addEvent('WebSocket bağlantısı kapandı.'); });
-  state.socket.addEventListener('error', () => { elements.connectionLabel.textContent = 'HATA'; addEvent('Canlı bağlantı kurulamadı.'); });
+  if (!state.token || [WebSocket.CONNECTING, WebSocket.OPEN].includes(state.socket?.readyState)) return;
+  clearTimeout(state.socketReconnectTimer);
+  state.socketReconnectTimer = null;
+
+  const socket = new WebSocket(API_URL.replace('http', 'ws') + '/ws');
+  state.socket = socket;
+  socket.addEventListener('open', () => {
+    if (state.socket !== socket) return;
+    state.socketReconnectAttempt = 0;
+    elements.connectionLabel.textContent = 'BAĞLI';
+    addEvent('WebSocket bağlantısı aktif.');
+  });
+  socket.addEventListener('message', (event) => {
+    if (state.socket !== socket) return;
+    const data = JSON.parse(event.data);
+    if (data.type === 'connected') addEvent(data.message);
+  });
+  socket.addEventListener('close', () => {
+    if (state.socket !== socket) return;
+    state.socket = null;
+    elements.connectionLabel.textContent = state.token ? 'YENİDEN BAĞLANIYOR' : 'BAĞLANTI KOPTU';
+    addEvent('WebSocket bağlantısı kapandı.');
+    if (!state.token) return;
+
+    const delay = Math.min(1000 * (2 ** state.socketReconnectAttempt), 30000);
+    state.socketReconnectAttempt += 1;
+    state.socketReconnectTimer = setTimeout(connectWebSocket, delay);
+  });
+  socket.addEventListener('error', () => {
+    if (state.socket === socket) elements.connectionLabel.textContent = 'YENİDEN BAĞLANIYOR';
+  });
 }
 
 async function startApp() {
@@ -292,7 +324,17 @@ elements.otaForm.addEventListener('submit', async (event) => {
   await uploadFirmware(deviceId, file);
 });
 
-document.getElementById('logout-button').addEventListener('click', () => { localStorage.removeItem('mikrodmz_token'); if (state.socket) state.socket.close(); location.reload(); });
+document.getElementById('logout-button').addEventListener('click', () => {
+  localStorage.removeItem('mikrodmz_token');
+  state.token = null;
+  clearTimeout(state.socketReconnectTimer);
+  if (state.socket) {
+    const socket = state.socket;
+    state.socket = null;
+    socket.close();
+  }
+  location.reload();
+});
 document.getElementById('refresh-button').addEventListener('click', () => loadDashboard().then(() => addEvent('Dashboard verileri yenilendi.')).catch((error) => addEvent(error.message)));
 document.getElementById('scan-button').addEventListener('click', (event) => { const button = event.currentTarget; button.textContent = '⌁ Tarama tamamlandı'; addEvent('Cihaz taraması tamamlandı.'); setTimeout(() => { button.textContent = '⌁ Cihazları tara'; }, 1800); });
 document.getElementById('clear-button').addEventListener('click', () => { elements.eventLog.innerHTML = ''; });
