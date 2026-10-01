@@ -266,7 +266,8 @@ bool SuperDMZ::beginDirect(const char* wsUrl, const char* token, uint16_t localP
   _directCaCert = caCert;
   _localPort = localPort;
   _deviceId = deviceId ? deviceId : "";
-  _targetHost = "127.0.0.1";
+  _targetHost = WiFi.localIP().toString();
+  if (_targetHost == "0.0.0.0") _targetHost = "127.0.0.1";
   _publicUrl = publicUrl ? publicUrl : "";
   _resolved = true;
   _ws.onEvent([this](WStype_t type, uint8_t* payload, size_t length) {
