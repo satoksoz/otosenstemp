@@ -253,14 +253,19 @@ async function relayHttpRequest(req, res, deviceId, relayOptions = {}) {
 
 ownTunnelServer.on('connection', (socket) => {
   let tunnel = null;
+  console.info('Device tunnel WebSocket connected');
   socket.on('message', (message) => {
     let envelope;
     try { envelope = JSON.parse(message.toString()); } catch { return; }
     if (envelope.t === 'hello' && !tunnel) {
       const hello = envelope.d || {};
-      if (hello.token !== TUNNEL_TOKEN || !hello.device_id) return socket.close(1008, 'invalid tunnel credentials');
+      if (hello.token !== TUNNEL_TOKEN || !hello.device_id) {
+        console.warn(`Device tunnel authentication rejected for ${hello.device_id || 'unknown device'}`);
+        return socket.close(1008, 'invalid tunnel credentials');
+      }
       tunnel = { socket, deviceId: hello.device_id };
       tunnelDevices.set(hello.device_id, tunnel);
+      console.info(`Device tunnel authenticated for ${hello.device_id}`);
       sendTunnelEnvelope(socket, 'ready', '', { public_url: `${PUBLIC_BASE_URL}/device/${encodeURIComponent(hello.device_id)}`, port: 80 });
       return;
     }
@@ -278,12 +283,16 @@ ownTunnelServer.on('connection', (socket) => {
     }
     if (envelope.t === 'ping') sendTunnelEnvelope(socket, 'pong');
   });
-  socket.on('close', () => {
+  socket.on('close', (code, reason) => {
+    console.info(`Device tunnel WebSocket closed for ${tunnel?.deviceId || 'unauthenticated client'}: ${code} ${reason.toString()}`);
     if (!tunnel) return;
     if (tunnelDevices.get(tunnel.deviceId)?.socket === socket) tunnelDevices.delete(tunnel.deviceId);
     for (const [id, stream] of tunnelStreams) {
       if (stream.socket === socket) { if (!stream.res.headersSent) stream.res.end(); tunnelStreams.delete(id); }
     }
+  });
+  socket.on('error', (error) => {
+    console.warn(`Device tunnel WebSocket error for ${tunnel?.deviceId || 'unauthenticated client'}: ${error.message}`);
   });
 });
 
