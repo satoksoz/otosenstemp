@@ -11,6 +11,7 @@ npm-debug.log*
 
 # Arduino build output
 arduino/**/build/
+arduino/dmz33/arduino_secrets.h
 
 # IDE / OS
 .vscode/

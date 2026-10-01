@@ -12,7 +12,9 @@
 #include <qrcode_espi.h>
 #include <math.h>
 #include <AsyncWebSocket.h>
+#include <WiFiClientSecure.h>
 #include "SuperDMZ.h"
+#include "arduino_secrets.h"
 
 AsyncWebSocket ws("/ws");
 bool clientConnected = false;
@@ -352,14 +354,45 @@ AsyncWebServer server(80);
 Step steps[MAX_STEPS];
 SuperDMZ tunnel;
 
-// Platform bağlantı ayarları: cihazı yüklemeden önce kendi sunucu adresinizi ve anahtarınızı girin.
-#define MIKRODMZ_PLATFORM_URL "http://192.168.137.1:3000"
-#define MIKRODMZ_DEVICE_KEY "dev-device-key"
+// Platform bağlantı ayarları
+#define MIKRODMZ_PLATFORM_URL "https://otosenstemp-production.up.railway.app"
 #define MIKRODMZ_ZONE "A1"
 #define MIKRODMZ_FIRMWARE_VERSION "dmz33-1.0"
 #define MIKRODMZ_USE_OWN_TUNNEL 1
-#define MIKRODMZ_TUNNEL_WS_URL "ws://192.168.137.1:3000/ws/device"
-#define MIKRODMZ_TUNNEL_TOKEN "mikrodmz-local-tunnel-key-2026"
+#define MIKRODMZ_TUNNEL_WS_URL "wss://otosenstemp-production.up.railway.app/ws/device"
+
+static const char MIKRODMZ_RAILWAY_ROOT_CA[] PROGMEM = R"CERT(-----BEGIN CERTIFICATE-----
+MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
+TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
+cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4
+WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu
+ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY
+MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzm54rVygc
+h77ct984kIxuPOZXoHj3dcKi/vVqbvYATyjb3miGbESTtrFj/RQSa78f0uoxmyF+
+0TM8ukj13Xnfs7j/EvEhmkvBioZxaUpmZmyPfjxwv60pIgbz5MDmgK7iS4+3mX6U
+A5/TR5d8mUgjU+g4rk8Kb4Mu0UlXjIB0ttov0DiNewNwIRt18jA8+o+u3dpjq+sW
+T8KOEUt+zwvo/7V3LvSye0rgTBIlDHCNAymg4VMk7BPZ7hm/ELNKjD+Jo2FR3qyH
+B5T0Y3HsLuJvW5iB4YlcNHlsdu87kGJ55tukmi8mxdAQ4Q7e2RCOFvu396j3x+UC
+B5iPNgiV5+I3lg02dZ77DnKxHZu8A/lJBdiB3QW0KtZB6awBdpUKD9jf1b0SHzUv
+KBds0pjBqAlkd25HN7rOrFleaJ1/ctaJxQZBKT5ZPt0m9STJEadao0xAH0ahmbWn
+OlFuhjuefXKnEgV4We0+UXgVCwOPjdAvBbI+e0ocS3MFEvzG6uBQE3xDk3SzynTn
+jh8BCNAw1FtxNrQHusEwMFxIt4I7mKZ9YIqioymCzLq9gwQbooMDQaHWBfEbwrbw
+qHyGO0aoSCqI3Haadr8faqU9GY/rOPNk3sgrDQoo//fb4hVC1CLQJ13hef4Y53CI
+rU7m2Ys6xt0nUW7/vGT1M0NPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNV
+HRMBAf8EBTADAQH/MB0GA1UdDgQWBBR5tFnme7bl5AFzgAiIyBpY9umbbjANBgkq
+hkiG9w0BAQsFAAOCAgEAVR9YqbyyqFDQDLHYGmkgJykIrGF1XIpu+ILlaS/V9lZL
+ubhzEFnTIZd+50xx+7LSYK05qAvqFyFWhfFQDlnrzuBZ6brJFe+GnY+EgPbk6ZGQ
+3BebYhtF8GaV0nxvwuo77x/Py9auJ/GpsMiu/X1+mvoiBOv/2X/qkSsisRcOj/KK
+NFtY2PwByVS5uCbMiogziUwthDyC3+6WVwW6LLv3xLfHTjuCvjHIInNzktHCgKQ5
+ORAzI4JMPJ+GslWYHb4phowim57iaztXOoJwTdwJx4nLCgdNbOhdjsnvzqvHu7Ur
+TkXWStAmzOVyyghqpZXjFaH3pO3JLF+l+/+sKAIuvtd7u+Nxe5AW0wdeRlN8NwdC
+jNPElpzVmbUq4JUagEiuTDkHzsxHpFKVK7q4+63SM1N95R1NbdWhscdCb+ZAJzVc
+oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq
+4RgqsahDYVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPA
+mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
+emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
+-----END CERTIFICATE-----
+)CERT";
 
 String platformDeviceId;
 
@@ -372,7 +405,7 @@ String buildPlatformDeviceId() {
   return String(id);
 }
 
-WiFiClient platformClient;
+WiFiClientSecure platformClient;
 bool platformRegistered = false;
 unsigned long lastPlatformTelemetry = 0;
 unsigned long lastPlatformCommandPoll = 0;
@@ -385,6 +418,7 @@ bool platformRequest(const char *method, const String &path, const String &body,
   HTTPClient http;
   String url = String(MIKRODMZ_PLATFORM_URL) + path;
   Serial.printf("MikroDMZ Node.js isteği: %s\n", url.c_str());
+  platformClient.setCACert(MIKRODMZ_RAILWAY_ROOT_CA);
   if (!http.begin(platformClient, url)) return false;
   http.setConnectTimeout(3000);
   http.setTimeout(5000);
@@ -4619,11 +4653,11 @@ void setup() {
   Serial.printf("MikroDMZ cihaz seri kimliği: %s\n", platformDeviceId.c_str());
   if ((wifiSettings.mode == 1 || forceAPMode == 1) && WiFi.status() == WL_CONNECTED) {
 #if MIKRODMZ_USE_OWN_TUNNEL
-    tunnel.beginDirect(MIKRODMZ_TUNNEL_WS_URL, MIKRODMZ_TUNNEL_TOKEN, 80, "", platformDeviceId.c_str());
+    tunnel.beginDirect(MIKRODMZ_TUNNEL_WS_URL, MIKRODMZ_TUNNEL_TOKEN, 80, "", platformDeviceId.c_str(), MIKRODMZ_RAILWAY_ROOT_CA);
     Serial.println("Kendi Node.js tüneli başlatılıyor...");
     Serial.printf("Node.js tunnel WS: %s\n", MIKRODMZ_TUNNEL_WS_URL);
 #else
-    tunnel.begin("198868a4989aaec7a16201716ed779d0fe93951cd64bd9a2", 80);
+    tunnel.begin(MIKRODMZ_SUPERDMZ_TOKEN, 80);
     Serial.println("SuperDMZ tüneli başlatılıyor (ESP32 web arayüzü için)...");
     Serial.println("ESP32 web arayüzü public URL: https://mikro5.dmzgate.com");
     Serial.printf("Node.js platform API: %s\n", MIKRODMZ_PLATFORM_URL);

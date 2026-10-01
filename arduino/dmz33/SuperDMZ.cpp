@@ -223,6 +223,7 @@ bool SuperDMZ::begin(const char* token, uint16_t localPort, const char* node, co
     lg("begin", "WARN: WiFi not connected; will wait before dialing");
   }
   _token = token;
+  _directCaCert = nullptr;
   _localPort = localPort;
   _node = node ? node : "";
   _targetHost = (targetHost && *targetHost) ? targetHost : "127.0.0.1";
@@ -255,17 +256,17 @@ bool SuperDMZ::begin(const char* token, uint16_t localPort, const char* node, co
 }
 
 bool SuperDMZ::beginDirect(const char* wsUrl, const char* token, uint16_t localPort,
-                           const char* publicUrl, const char* deviceId) {
+                           const char* publicUrl, const char* deviceId, const char* caCert) {
   if (!wsUrl || !*wsUrl || !token || strlen(token) < 16 || localPort == 0) {
     lg("begin", "ERROR: invalid direct tunnel configuration");
     return false;
   }
 
   _token = token;
+  _directCaCert = caCert;
   _localPort = localPort;
   _deviceId = deviceId ? deviceId : "";
-  _targetHost = WiFi.localIP().toString();
-  if (_targetHost == "0.0.0.0") _targetHost = "127.0.0.1";
+  _targetHost = "127.0.0.1";
   _publicUrl = publicUrl ? publicUrl : "";
   _resolved = true;
   _ws.onEvent([this](WStype_t type, uint8_t* payload, size_t length) {
@@ -299,6 +300,8 @@ void SuperDMZ::connectToUrl(const String& wsUrl) {
   lg("ws", "connecting wss://%s:%u%s ...", host.c_str(), port, path.c_str());
   if (wsUrl.startsWith("ws://")) {
     _ws.begin(host.c_str(), port, path.c_str());
+  } else if (_directCaCert) {
+    _ws.beginSslWithCA(host.c_str(), port, path.c_str(), _directCaCert);
   } else {
     _ws.beginSSL(host.c_str(), port, path.c_str());
   }
@@ -334,7 +337,11 @@ void SuperDMZ::reconnect() {
 void SuperDMZ::wsEvent(WStype_t type, uint8_t* payload, size_t length) {
   switch (type) {
     case WStype_DISCONNECTED:
-      lg("ws", "DISCONNECTED");
+      if (payload && length > 0) {
+        lg("ws", "DISCONNECTED: %.*s", (int)length, payload);
+      } else {
+        lg("ws", "DISCONNECTED without reason");
+      }
       _online = false;
       if (_statusCb) _statusCb(false, _publicUrl.c_str());
       for (auto& kv : _streams) {
@@ -359,7 +366,8 @@ void SuperDMZ::wsEvent(WStype_t type, uint8_t* payload, size_t length) {
                    + ",\"local_scheme\":\"http\""
                    + ",\"local_port\":"     + String(_localPort)
                    + "}";
-      sendEnvelope(MSG_HELLO, "", hello);
+      const bool helloSent = sendEnvelope(MSG_HELLO, "", hello);
+      lg("ws", "hello frame %s", helloSent ? "sent" : "send failed");
       break;
     }
 

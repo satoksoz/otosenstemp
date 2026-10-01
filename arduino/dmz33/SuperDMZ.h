@@ -46,7 +46,8 @@ class SuperDMZ {
 
   // Connect directly to a MikroDMZ Node.js relay without SuperDMZ discovery.
   bool beginDirect(const char* wsUrl, const char* token, uint16_t localPort,
-                   const char* publicUrl = "", const char* deviceId = "");
+                   const char* publicUrl = "", const char* deviceId = "",
+                   const char* caCert = nullptr);
 
   // Call from loop(). Keeps the WS alive, processes requests, manages reconnect.
   void loop();
@@ -119,6 +120,7 @@ class SuperDMZ {
   WebSocketsClient _ws;
   String _token;
   String _deviceId;
+  const char* _directCaCert = nullptr;
   String _node;          // optional pin, e.g. "<node>.nodes.superdmz.com"
   uint16_t _localPort;   // user's local WebServer port
   String   _targetHost = "127.0.0.1";  // host dialed per connection (loopback for
